@@ -1,2 +1,4 @@
 pre_processing/hand_silhouette
 pre_processing/hand_edge
+pre_processing/hand_fingers
+pre_processing/datasets

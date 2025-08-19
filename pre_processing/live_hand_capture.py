@@ -15,8 +15,28 @@ WINDOW_PROC = "Silhouette & Edges"
 # Output folders (created if missing)
 SILHOUETTE_DIR = "hand_silhouette"
 EDGE_DIR = "hand_edge"
+FINGER_DIR = "hand_fingers"
 os.makedirs(SILHOUETTE_DIR, exist_ok=True)
 os.makedirs(EDGE_DIR, exist_ok=True)
+os.makedirs(FINGER_DIR, exist_ok=True)
+
+FINGER_COLORS = {
+    "thumb": (0, 0, 255),     # Red
+    "index": (0, 255, 0),     # Green
+    "middle": (255, 0, 0),    # Blue
+    "ring": (0, 255, 255),    # Yellow
+    "pinky": (255, 0, 255),   # Purple
+    "palm": (255, 255, 255)   # White
+}
+
+# Finger landmark groups
+FINGER_LMS = {
+    "thumb": [1, 2, 3, 4],
+    "index": [5, 6, 7, 8],
+    "middle": [9, 10, 11, 12],
+    "ring": [13, 14, 15, 16],
+    "pinky": [17, 18, 19, 20]
+}
 
 # MediaPipe config
 MAX_HANDS = 1
@@ -70,6 +90,31 @@ def build_mask_from_landmarks(img, hand_landmarks_list, mp_hands, mp_drawing):
     mask_gray = cv2.dilate(mask_gray, np.ones(DILATE_KERNEL, np.uint8), iterations=2)
     mask_gray = cv2.morphologyEx(mask_gray, cv2.MORPH_CLOSE, np.ones(CLOSE_KERNEL, np.uint8), iterations=1)
     return mask_gray
+
+def build_finger_colored_mask(img, hand_landmarks, mp_hands):
+    """
+    Create a black canvas and color each finger + palm differently.
+    """
+    h, w, _ = img.shape
+    mask = np.zeros((h, w, 3), dtype=np.uint8)
+
+    # Palm (just fill convex hull of landmarks excluding fingertips)
+    palm_points = [
+        (int(hand_landmarks.landmark[i].x * w), int(hand_landmarks.landmark[i].y * h))
+        for i in [0, 1, 5, 9, 13, 17]  # wrist + base joints
+    ]
+    if len(palm_points) >= 3:
+        cv2.fillConvexPoly(mask, np.array(palm_points), FINGER_COLORS["palm"])
+
+    # Fingers
+    for finger, ids in FINGER_LMS.items():
+        points = [(int(hand_landmarks.landmark[i].x * w), int(hand_landmarks.landmark[i].y * h)) for i in ids]
+        for i in range(len(points) - 1):
+            cv2.line(mask, points[i], points[i+1], FINGER_COLORS[finger], thickness=12)
+        # fingertip circle
+        cv2.circle(mask, points[-1], 12, FINGER_COLORS[finger], -1)
+
+    return mask
 
 def preprocess_to_silhouette_and_edges(frame_bgr, hand_mask):
     """
@@ -145,8 +190,7 @@ def main():
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = hands.process(rgb)
 
-        silhouette = None
-        edges = None
+        silhouette, edges, finger_mask = None, None, None
         detected = results.multi_hand_landmarks is not None
 
         if detected:
@@ -161,13 +205,15 @@ def main():
             # Build mask from landmarks and preprocess
             hand_mask = build_mask_from_landmarks(frame, results.multi_hand_landmarks, mp_hands, mp_drawing)
             silhouette, edges = preprocess_to_silhouette_and_edges(frame, hand_mask)
+            # Build finger-colored mask (only first hand for now)
+            finger_mask = build_finger_colored_mask(frame, results.multi_hand_landmarks[0], mp_hands)
+
 
         # Compose the processed window image
-        if silhouette is not None and edges is not None:
-            # Show silhouette (left) and edges (right) side-by-side
+        if silhouette is not None and edges is not None and finger_mask is not None:
             silu_bgr = cv2.cvtColor(silhouette, cv2.COLOR_GRAY2BGR)
             edges_bgr = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-            proc_vis = np.hstack([silu_bgr, edges_bgr])
+            proc_vis = np.hstack([silu_bgr, edges_bgr, finger_mask])
         else:
             # If no hand detected, show a black canvas with a message
             h, w, _ = frame.shape
@@ -202,9 +248,11 @@ def main():
             edge_path = os.path.join(EDGE_DIR, f"edge_{t}.png")
 
             # Only save when we actually have images
-            if silhouette is not None and edges is not None:
+            if silhouette is not None and edges is not None and finger_mask is not None:
                 cv2.imwrite(silu_path, silhouette)
                 cv2.imwrite(edge_path, edges)
+                finger_path = os.path.join(FINGER_DIR, f"fingers_{t}.png")
+                cv2.imwrite(finger_path, finger_mask)
                 saved_count += 1
 
         # Keyboard controls
