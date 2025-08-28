@@ -2,3 +2,11 @@ pre_processing/hand_silhouette
 pre_processing/hand_edge
 pre_processing/hand_fingers
 pre_processing/datasets
+pre_processing/__pycache__
+pre_processing/augmented_dataset
+pre_processing/a-z_automate_dataset_finger.py
+pre_processing/data_augmentation.py
+
+
+model/combine_prediction.py
+

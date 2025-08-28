@@ -13,18 +13,16 @@ WINDOW_LANDMARKS = "MediaPipe Landmarks"
 WINDOW_PROC = "Silhouette & Edges"
 
 # Output folders (created if missing)
-SILHOUETTE_DIR = "hand_silhouette"
 EDGE_DIR = "hand_edge"
 FINGER_DIR = "hand_fingers"
-os.makedirs(SILHOUETTE_DIR, exist_ok=True)
 os.makedirs(EDGE_DIR, exist_ok=True)
 os.makedirs(FINGER_DIR, exist_ok=True)
 
 FINGER_COLORS = {
-    "thumb": (0, 0, 255),     # Red
+    "thumb": (255, 0, 0),     # Blue
     "index": (0, 255, 0),     # Green
-    "middle": (255, 0, 0),    # Blue
-    "ring": (0, 255, 255),    # Yellow
+    "middle": (0, 0, 255),    # Red
+    "ring": (255, 255, 0),    # Yellow
     "pinky": (255, 0, 255),   # Purple
     "palm": (255, 255, 255)   # White
 }
@@ -210,10 +208,9 @@ def main():
 
 
         # Compose the processed window image
-        if silhouette is not None and edges is not None and finger_mask is not None:
-            silu_bgr = cv2.cvtColor(silhouette, cv2.COLOR_GRAY2BGR)
+        if edges is not None and finger_mask is not None:
             edges_bgr = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-            proc_vis = np.hstack([silu_bgr, edges_bgr, finger_mask])
+            proc_vis = np.hstack([edges_bgr, finger_mask])
         else:
             # If no hand detected, show a black canvas with a message
             h, w, _ = frame.shape
@@ -244,14 +241,11 @@ def main():
         # Save if enabled and a hand is detected
         if detected and SAVE_ENABLED and (frame_count % SAVE_EVERY_N_FRAMES == 0) and (MAX_SAVED_PER_SESSION == 0 or saved_count < MAX_SAVED_PER_SESSION):
             t = timestamp_ms()
-            silu_path = os.path.join(SILHOUETTE_DIR, f"silhouette_{t}.png")
             edge_path = os.path.join(EDGE_DIR, f"edge_{t}.png")
+            finger_path = os.path.join(FINGER_DIR, f"fingers_{t}.png")
 
-            # Only save when we actually have images
-            if silhouette is not None and edges is not None and finger_mask is not None:
-                cv2.imwrite(silu_path, silhouette)
+            if edges is not None and finger_mask is not None:
                 cv2.imwrite(edge_path, edges)
-                finger_path = os.path.join(FINGER_DIR, f"fingers_{t}.png")
                 cv2.imwrite(finger_path, finger_mask)
                 saved_count += 1
 
@@ -270,8 +264,8 @@ def main():
     cv2.destroyAllWindows()
     hands.close()
     print(f"⏹ Done. Saved {saved_count} pairs to:")
-    print(f"   - {SILHOUETTE_DIR}")
     print(f"   - {EDGE_DIR}")
+    print(f"   - {FINGER_DIR}")
 
 if __name__ == "__main__":
     main()
