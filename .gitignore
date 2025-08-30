@@ -8,5 +8,4 @@ pre_processing/a-z_automate_dataset_finger.py
 pre_processing/data_augmentation.py
 
 
-model/combine_prediction.py
 
