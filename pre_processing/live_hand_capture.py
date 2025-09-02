@@ -22,8 +22,8 @@ FINGER_COLORS = {
     "thumb": (255, 0, 0),     # Blue
     "index": (0, 255, 0),     # Green
     "middle": (0, 0, 255),    # Red
-    "ring": (255, 255, 0),    # Yellow
-    "pinky": (255, 0, 255),   # Purple
+    "ring": (255, 255, 0),    # cyan
+    "pinky": (255, 0, 255),   # Purple/pinksh
     "palm": (255, 255, 255)   # White
 }
 
